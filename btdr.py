@@ -135,13 +135,17 @@ class AbstractBittensorDrandTimelock:
         for uid, (target_round, ciphertext) in encrypted_dict.items():
             try:
                 signature = self._get_drand_signature(target_round, cache)
+                decrypted_dict[uid] = self.decrypt(uid, ciphertext, target_round, signature)
             except RuntimeError:
                 current_round = self.get_current_round()
                 bt.logging.warning(f"Skipping UID {uid}: Too early to decrypt: {target_round=}, {current_round=}")
                 decrypted_dict[uid] = None
                 continue
-            #print(repr(ciphertext))
-            decrypted_dict[uid] = self.decrypt(uid, ciphertext, target_round, signature)
+            except ValueError:
+                bt.logging.warning(f"Skipping UID {uid}: Invalid ciphertext")
+                decrypted_dict[uid] = None
+                continue
+            #print(repr(ciphertext))            
         return decrypted_dict
 
 

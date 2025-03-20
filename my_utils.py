@@ -9,7 +9,7 @@ import asyncio
 
 load_dotenv(override=True)
 
-def upload_file_to_github(target_protein: str, antitarget_protein: str, encoded_content: str):
+def upload_file_to_github(filename: str, encoded_content: str):
     # Github configs
     github_repo_name = os.environ.get('GITHUB_REPO_NAME')   # example: nova
     github_repo_branch = os.environ.get('GITHUB_REPO_BRANCH') # example: main
@@ -20,7 +20,7 @@ def upload_file_to_github(target_protein: str, antitarget_protein: str, encoded_
     if not github_repo_name or not github_repo_branch or not github_token or not github_repo_owner:
         raise ValueError("Github environment variables not set. Please set them in your .env file.")
 
-    target_file_path = os.path.join(github_repo_path, f'{target_protein}_{antitarget_protein}.txt')
+    target_file_path = os.path.join(github_repo_path, f'{filename}.txt')
     url = f"https://api.github.com/repos/{github_repo_owner}/{github_repo_name}/contents/{target_file_path}"
     headers = {
         "Authorization": f"Bearer {github_token}",
@@ -32,7 +32,7 @@ def upload_file_to_github(target_protein: str, antitarget_protein: str, encoded_
     sha = existing_file.json().get("sha") if existing_file.status_code == 200 else None
 
     payload = {
-        "message": f"Encrypted response for {target_protein}_{antitarget_protein}",
+        "message": f"Encrypted response for {filename}",
         "content": encoded_content,
         "branch": github_repo_branch,
     }
@@ -43,13 +43,17 @@ def upload_file_to_github(target_protein: str, antitarget_protein: str, encoded_
     if response.status_code in [200, 201]:
         return True
     else:
-        bt.logging.error(f"Failed to upload file for {target_protein}_{antitarget_protein}: {response.status_code} {response.text}")
+        bt.logging.error(f"Failed to upload file for {filename}: {response.status_code} {response.text}")
         return False
 
 
 def get_smiles(product_name):
     # Remove single and double quotes from product_name if they exist
-    product_name = product_name.replace("'", "").replace('"', "")
+    if product_name:
+        product_name = product_name.replace("'", "").replace('"', "")
+    else:
+        bt.logging.error("Product name is empty.")
+        return None
 
     api_key = os.environ.get("VALIDATOR_API_KEY")
     if not api_key:
